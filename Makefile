@@ -1,23 +1,28 @@
 SRC_DIR  = src
+PAR_DIR  = $(SRC_DIR)/parser
 OBJ_DIR  = src
 BIN_DIR  = bin
 
 MAIN_PRG = $(SRC_DIR)/micropiler.c
 TEST_PRG = $(SRC_DIR)/test.c
-
 PRG      = $(BIN_DIR)/micropiler
 TST      = $(BIN_DIR)/test
-SRC      = $(wildcard $(SRC_DIR)/*/*.c)
-INC      = $(wildcard $(SRC_DIR)/*.h) $(wildcard $(SRC_DIR)/*/*.h)
+
+LEX      = $(wildcard $(PAR_DIR)/*.l)
+PAR      = $(wildcard $(PAR_DIR)/*.y)
+SRC      = $(wildcard $(SRC_DIR)/*/*.c) $(patsubst $(PAR_DIR)/%.l, $(PAR_DIR)/%.o, $(LEX)) $(patsubst $(PAR_DIR)/%.y, $(PAR_DIR)/%.o, $(PAR))
+INC      = $(wildcard $(SRC_DIR)/*.h) $(wildcard $(SRC_DIR)/*/*.h) $(patsubst $(PAR_DIR)/%.y, $(PAR_DIR)/%.h, $(PAR))
 OBJ      = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
 
 CC       = gcc
 CFLAGS   = -Wall -g -O0
 CPPFLAGS =
 
-YFLAGS   = -d
+LFLAGS   = -Cf
+YFLAGS   = -dtv -Wcounterexamples -Wconflicts-sr -Wconflicts-rr
 
-.PHONY: all test clean
+
+.PHONY: all test clean make_parser
 
 all: $(PRG) $(TST)
 
@@ -25,22 +30,22 @@ main: $(PRG)
 
 test: $(TST)
 
-$(OBJ_DIR)/%.c: $(SRC_DIR)/%.y
-	bison $(YFLAGS) -o $@ $<
+%.c:%.l
+	lex $(LFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.c: $(SRC_DIR)/%.l
-	lex -o $@ $<
+%.c:%.y
+	bison $(YFLAGS) -o $@ $<
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INC)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(TST): $(OBJ) $(TEST_PRG)
+$(TST): $(PAR) $(LEX) $(OBJ) $(TEST_PRG)
 	$(CC) $(CFLAGS) $(OBJ) $(TEST_PRG) -o $@ -lm -ll
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 	@echo  \* Test program compiled successfully ! \*
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
-$(PRG): $(OBJ) $(MAIN_PRG)
+$(PRG): $(PAR) $(LEX) $(OBJ) $(MAIN_PRG)
 	$(CC) $(CFLAGS) $(OBJ) $(MAIN_PRG) -o $@ -lm -ll
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 	@echo \* Main program compiled successfully ! \*
