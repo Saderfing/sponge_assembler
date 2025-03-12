@@ -1,57 +1,70 @@
-SRC_DIR  = src
-PAR_DIR  = $(SRC_DIR)/parser
-OBJ_DIR  = src
-BIN_DIR  = bin
+# Directories
+SRCDIR   = src
+PARDIR   = $(SRCDIR)/parser
+OBJDIR   = obj
+BINDIR   = bin
 
-MAIN_PRG = $(SRC_DIR)/micropiler.c
-TEST_PRG = $(SRC_DIR)/test.c
-PRG      = $(BIN_DIR)/micropiler
-TST      = $(BIN_DIR)/test
+# Build modes
 
-LEX      = $(wildcard $(PAR_DIR)/*.l)
-PAR      = $(wildcard $(PAR_DIR)/*.y)
-SRC      = $(wildcard $(SRC_DIR)/*/*.c) $(patsubst $(PAR_DIR)/%.l, $(PAR_DIR)/%.o, $(LEX)) $(patsubst $(PAR_DIR)/%.y, $(PAR_DIR)/%.o, $(PAR))
-INC      = $(wildcard $(SRC_DIR)/*.h) $(wildcard $(SRC_DIR)/*/*.h) $(patsubst $(PAR_DIR)/%.y, $(PAR_DIR)/%.h, $(PAR))
-OBJ      = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
+ifdef BUILD
+CFLAGS   +=-O2
+else
+CPPFLAGS +=-g
+CFLAGS   +=-O0
+endif
+
+ifdef TEST
+PRG      = $(SRCDIR)/test.c
+else
+PRG      = $(SRCDIR)/micropiler.c
+endif
+
+# Files
+
+LEXFILE  = $(wildcard $(PARDIR)/*.l)
+PARFILE  = $(wildcard $(PARDIR)/*.y)
+
+LEXBUILD = $(LEXFILE:%.l=%.c)
+PARBUILD = $(PARFILE:%.y=%.c)
+
+SRC      = $(LEXBUILD) $(PARBUILD) $(wildcard $(SRCDIR)/*/*.c) $(PRG)
+INC      = $(shell dirname $(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/*/*.h) | sort | uniq)
+OBJ      = $(SRC:%.c=%.o) 
+EXEC     = $(BINDIR)/$(notdir $(PRG:%.c=%))
+
+
+# Compile
 
 CC       = gcc
-CFLAGS   = -Wall -g -O0
-CPPFLAGS =
+CFLAGS   = -Wall
+CPPFLAGS = $(INC:%=-I./%)
+LDFLAGS  = -ll -lm  # (libs includes always at the end)
 
+LEX      = lex
 LFLAGS   = -Cf
-YFLAGS   = -dtv -Wcounterexamples -Wconflicts-sr -Wconflicts-rr
+
+YACC     = bison
+YFLAGS   = -t --header=$(PARFILE:%.y=%.h) -Wall
 
 
-.PHONY: all test clean make_parser
 
-all: $(PRG) $(TST)
+.PHONY: all main test clean
 
-main: $(PRG)
+all: $(EXEC)
 
-test: $(TST)
 
 %.c:%.l
-	lex $(LFLAGS) -o $@ $<
+	$(LEX) $(LFLAGS) -o $@ $<
 
 %.c:%.y
-	bison $(YFLAGS) -o $@ $<
+	$(YACC) $(YFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INC)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(TST): $(PAR) $(LEX) $(OBJ) $(TEST_PRG)
-	$(CC) $(CFLAGS) $(OBJ) $(TEST_PRG) -o $@ -lm -ll
-	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-	@echo  \* Test program compiled successfully ! \*
-	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
-
-$(PRG): $(PAR) $(LEX) $(OBJ) $(MAIN_PRG)
-	$(CC) $(CFLAGS) $(OBJ) $(MAIN_PRG) -o $@ -lm -ll
+$(EXEC): $(LEXBUILD) $(PARBUILD) $(OBJ)
+	$(CC) $(OBJ) -o $@ $(LDFLAGS)
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 	@echo \* Main program compiled successfully ! \*
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
 clean:
-	$(RM) -rv $(BIN_DIR)/* $(OBJ_DIR)/*/*.o
-
--include $(OBJ:.o=.d)
+	-rm $(BINDIR)/* $(SRCDIR)/*/*.o $(SRCDIR)/*.o $(LEXBUILD) $(PARBUILD)
