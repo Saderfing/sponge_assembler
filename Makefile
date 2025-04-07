@@ -1,5 +1,6 @@
 # Directories
 SRCDIR   = src
+INCDIR   = $(wildcard $(SRCDIR)/*/)
 PARDIR   = $(SRCDIR)/parser
 OBJDIR   = obj
 BINDIR   = bin
@@ -28,7 +29,7 @@ LEXBUILD = $(LEXFILE:%.l=%.c)
 PARBUILD = $(PARFILE:%.y=%.c)
 
 SRC      = $(LEXBUILD) $(PARBUILD) $(wildcard $(SRCDIR)/*/*.c) $(PRG)
-INC      = $(shell dirname $(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/*/*.h) | sort | uniq)
+INC      = $(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/*/*.h)
 OBJ      = $(SRC:%.c=%.o) 
 EXEC     = $(BINDIR)/$(notdir $(PRG:%.c=%))
 
@@ -36,8 +37,8 @@ EXEC     = $(BINDIR)/$(notdir $(PRG:%.c=%))
 # Compile
 
 CC       = gcc
+CPPFLAGS = $(INCDIR:%=-I%)
 CFLAGS   = -Wall
-CPPFLAGS = $(INC:%=-I./%)
 LDFLAGS  = -ll -lm  # (libs includes always at the end)
 
 LEX      = lex
@@ -60,7 +61,7 @@ all: $(EXEC)
 	$(YACC) $(YFLAGS) -o $@ $<
 
 
-$(EXEC): $(LEXBUILD) $(PARBUILD) $(OBJ)
+$(EXEC):$(OBJ)
 	$(CC) $(OBJ) -o $@ $(LDFLAGS)
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 	@echo \* Main program compiled successfully ! \*
