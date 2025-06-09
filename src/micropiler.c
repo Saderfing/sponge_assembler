@@ -1,26 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "sponge_std/sponge_std.h"
-#include "parser/parser.h"
-#include "hashmap/hashmap.h"
-#include "instruction/instruction_stream.h"
+#include "sponge_std.h"
+#include "parser.h"
+#include "hashmap.h"
+#include "instruction_stream.h"
 
 #define PARSING_SUCCESS 0
 
 void writeInstructionStream(FILE *f, InstStream *is){
-	for (int i = 0; i < is->length; i++){
-		fwrite(is->stream, sizeof(Inst), is->length, f);
+	Inst buf;
+	for (unsigned int i = 0; i < is->length; i++){
+		buf = getInstFromInstStream(i, is);
+		fwrite(&buf, sizeof(Inst), is->length, f);
 	}
 }
 
-void printBinary(u32 val){
-	char buffer[33];
-	for (int i = 0; i < 31; i++){
+void printBinary(uint64_t val){
+	char buffer[65];
+	for (int i = 0; i < 63; i++){
 		buffer[i] = '0';
 	}
-	buffer[32] = '\0';
+	buffer[64] = '\0';
 
-	int i = 31;
+	int i = 63;
 	while (val > 0){
 		buffer[i] = (val % 2) + '0';
 		val = val / 2;
@@ -38,19 +40,17 @@ void printBinary(u32 val){
 	printf("\n");
 }
 
-
 int main(int argc, char *argv[]){
 	argc--; argv++;
-	
-	yyin = stdin;
-	FILE *yyout = stdout;
+
+	FILE *out = stdout;
 
 	if (argc >= 1){
 		yyin = openFile(argv[0], READ_MODE);
 	}
 
 	if (argc >= 2){
-		yyout = openFile(argv[1], WRITE_BINARY_MODE);
+		out = openFile(argv[1], WRITE_BINARY_MODE);
 	}
 
 	InstStream *is = newInstStream();
@@ -61,16 +61,22 @@ int main(int argc, char *argv[]){
 	
 	if (parseCode == PARSING_SUCCESS){
 		printf(" iiii iccc cttv dddd ffff dddd ssss ssss\n");
-		for (int i = 0; i < is->length; i++){
-			printInstruction(is->stream[i]);
-			printBinary(is->stream[i]);
+		for (unsigned int i = 0; i < is->length; i++){
+			printInstruction(getInstFromInstStream(i, is));
+			printBinary(getInstFromInstStream(i, is));
+			printf("%lx\n", getInstFromInstStream(i, is));
+			
 		}
 
-		writeInstructionStream(yyout, is);
+		writeInstructionStream(out, is);
 	}
 	
+	freeInstrStream(is);
+	freeHashMap(symboleTable);
+
+	// closeFile(yyin);
 	closeFile(yyin);
-	closeFile(yyout);
+	closeFile(out);
 
 	return 0;
 }
