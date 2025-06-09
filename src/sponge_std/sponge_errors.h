@@ -13,11 +13,14 @@ typedef enum {
 	UNKOWN_INSTRUCTION,
 	ZERO_DIVID,
 
+	NULL_REGISTER,
+	INVALIDE_IMMEDIATE_VALUE,
+
 	SEGMENTATION_FAULT,
 
     ERROR_COUNT
 } Error;
 
-void printError(Error errorId);
+void printError(int errorId);
 
 #endif
