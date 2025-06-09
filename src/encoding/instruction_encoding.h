@@ -83,11 +83,11 @@ typedef enum instrName {
 	
 	IM_HLT,
 	INSTRUCTION_COUNT
-} InstructionCode;
+} Mnemonic;
 
 typedef enum instructionMask{
-	INSTRUCTION_CODE_MASK = 0x1F,
-	INSTRUCTION_CODE_SIZE = 5,
+	MNEUMONIC_MASK = 0x1F,
+	MNEUMONIC_SIZE = 5,
 
 	CONDITION_MASK		  = 0xF,
 	CONDITION_SIZE		  = 4,
@@ -104,6 +104,5 @@ typedef enum instructionMask{
 	IMMEDIATE_VALUE_MASK  = 0xFFFFFFFF,
 	IMMEDIATE_VALUE_SIZE  = 32
 } InstructionMask;
-
 
 #endif

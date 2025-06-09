@@ -2,31 +2,54 @@
 #include <errno.h>
 
 
-char *instructionRepr[INSTRUCTION_COUNT] = {"NOP", "MOV", "MVN", "AND", "ORR", "XOR", "ADD", "SUB", "MUL", "DIV", "REM", "LSL", "LSR", "LDR", "STR", "CMP", "JMP", "PRR", "PRM", "HLT"};
+static const char *instRepr[INSTRUCTION_COUNT] = {"NOP", "AND", "ORR", "XOR", "ADD", "SUB", "MUL", "DIV", "REM", "LSL", "LSR", "LDR", "STR", "CMP", "JMP", "MOV", "MVN", "PRR", "PRM", "HLT"};
 
-char *registerRepr[REGISTER_COUNT] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "lr", "fp", "sp", "pc"};
+static const char *registerRepr[REGISTER_COUNT] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "lr", "fp", "sp", "pc"};
 
-char *datatypeRepr[DATATYPES_COUNT] = {"B", "H", "W", "D"};
+static const char *datatypeRepr[DATATYPES_COUNT] = {"B", "H", "W", "D"};
 
-char *conditionRepr[CONDITION_COUNT] = {"AL", "NE", "CS", "CC", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "EQ"};
+static const char *conditionRepr[CONDITION_COUNT] = {"AL", "NE", "CS", "CC", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "EQ"};
 
-Inst newInst(){
+EncodedInst newEncodedInst(){
 	return IM_NOP;
 }
 
-void setBits(uint64_t *dest, uint64_t data, uint64_t mask, uint64_t shift){
-	*dest = ((*dest & ~(mask << shift)) | (data << shift));
+DecodedInst *newDecodedInst(){
+	DecodedInst *inst = (DecodedInst *)malloc(sizeof(DecodedInst));
+	if (!inst){
+		return NULL;
+	}
+
+	inst->mnemonic      = IM_NOP;
+	inst->isImmediate    = 0;
+	inst->condition      = IC_AL;
+	inst->dataType       = ID_DOUB;
+	inst->destRegister   = 0;
+	inst->arg1Register   = 0;
+	inst->arg2Register   = 0;
+	inst->immediateValue = 0;
+
+	return inst;
+}
+
+void setBits(uint64_t *dest, uint64_t src, uint64_t mask, uint64_t shift){
+	*dest = ((*dest & ~(mask << shift)) | (src << shift));
+}
+
+uint64_t getBits(uint64_t src, uint64_t mask, uint64_t shift){
+	return (src & ~(mask << shift)) >> mask;
 }
 
 uint8_t isValideRegisterCode(RegisterCode registerCode){
 	return 0 <= registerCode && registerCode <= 15;
 }
 
-Inst getPrrInstruction(RegisterCode registerCode){
-	Inst inst = newInst();
 
-	uint64_t shift = (64 - INSTRUCTION_CODE_SIZE);
-	setBits(&inst, IM_PRR, INSTRUCTION_CODE_MASK, shift);
+EncodedInst getPrrDecodedInst(RegisterCode registerCode){
+	EncodedInst inst = newInst();
+
+	uint64_t shift = (64 - MNEUMONIC_SIZE);
+	setBits(&inst, IM_PRR, MNEUMONIC_MASK, shift);
 
 	shift -= REGISTER_CODE_SIZE;
 	setBits(&inst, registerCode, REGISTER_CODE_MASK, shift);
@@ -34,11 +57,11 @@ Inst getPrrInstruction(RegisterCode registerCode){
 	return inst;
 }
 
-Inst getCopyInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, uint64_t value){
-	Inst inst = newInst();
+EncodedInst getCopyDecodedInst(Mnemonic  ic, uint8_t isImmediate, RegisterCode dest, uint64_t value){
+	EncodedInst inst = newInst();
 	
-	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
-	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+	uint64_t shift = 64 - MNEUMONIC_SIZE;
+	setBits(&inst, ic, MNEUMONIC_MASK, shift);
 
 	shift = shift - IS_IMMEDIATE_SIZE;
 	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
@@ -59,11 +82,11 @@ Inst getCopyInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode de
 	return inst;
 }
 
-Inst getJumpInstruction(uint32_t value){
-	Inst inst = newInst();
+EncodedInst getJumpDecodedInst(uint32_t value){
+	EncodedInst inst = newInst();
 	
-	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
-	setBits(&inst, IM_JMP, INSTRUCTION_CODE_MASK, shift);
+	uint64_t shift = 64 - MNEUMONIC_SIZE;
+	setBits(&inst, IM_JMP, MNEUMONIC_MASK, shift);
 
 	shift = shift - IS_IMMEDIATE_SIZE;
 	setBits(&inst, IMMEDIATE, IS_IMMEDIATE_MASK, shift);
@@ -76,11 +99,11 @@ Inst getJumpInstruction(uint32_t value){
 	return inst;
 }
 
-Inst getLoadStoreInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
-	Inst inst = newInst();
+EncodedInst getLoadStoreDecodedInst(Mnemonic   ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
+	EncodedInst inst = newInst();
 	
-	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
-	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+	uint64_t shift = 64 - MNEUMONIC_SIZE;
+	setBits(&inst, ic, MNEUMONIC_MASK, shift);
 
 	shift = shift  - IS_IMMEDIATE_SIZE;
 	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
@@ -104,11 +127,11 @@ Inst getLoadStoreInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCo
 	return inst;
 }
 
-Inst getCalculInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
-	Inst inst = newInst();
+EncodedInst getCalculDecodedInst(Mnemonic   ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
+	EncodedInst inst = newInst();
 	
-	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
-	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+	uint64_t shift = 64 - MNEUMONIC_SIZE;
+	setBits(&inst, ic, MNEUMONIC_MASK, shift);
 
 	shift = shift  - IS_IMMEDIATE_SIZE;
 	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
@@ -161,7 +184,7 @@ uint8_t getRegisterCode(char *reg){
 		fatalError(NULL_REGISTER);
 	}
 
-
+	reg++; // skipping the [rR] prefix
 
 	uint8_t result = strtoul(reg, NULL, 10);
 	
@@ -170,10 +193,122 @@ uint8_t getRegisterCode(char *reg){
 	return result;
 }
 
-uint8_t isValidInstruction(Inst inst){
+uint8_t isValidDecodedInst(EncodedInst inst){
 	return 1;
 }
 
-void printInstruction(Inst inst){
-	printAsBinary(inst);
+uint8_t decodeMnemonic(EncodedInst inst, DecodedInst){
+	uint8_t mneumonic = getBits(inst, MNEUMONIC_MASK, sizeof(Inst) - MNEUMONIC_SIZE);
+
+}
+
+uint8_t decodeRegister(EncodedInst inst){
+
+}
+
+DecodedInst *decodeInst(EncodedInst inst){
+	DecodedInst *i = newDecodedInst();
+	uint8_t shift = 64 - MNEUMONIC_SIZE;
+	
+	printMnemonic(i->mnemonic);
+	switch (i->mnemonic){
+		case IM_AND:
+		case IM_ORR:
+		case IM_XOR:
+		case IM_ADD:
+		case IM_SUB:
+		case IM_MUL:
+		case IM_DIV:
+		case IM_REM:
+		case IM_LSL:
+		case IM_LSR:
+			shift -= IS_IMMEDIATE_SIZE;
+			i->isImmediate = getBits(inst, IS_IMMEDIATE_MASK, shift);
+
+			shift -= REGISTER_CODE_SIZE;
+			i->destRegister = getBits(inst, REGISTER_CODE_MASK, shift);
+
+			shift -= REGISTER_CODE_SIZE;
+			i->destRegister = getBits(inst, REGISTER_CODE_MASK, shift);
+
+			if (i->isImmediate){
+				shift -= IMMEDIATE_VALUE_SIZE;
+				i->immediateValue = getBits(inst, IMMEDIATE_VALUE_MASK, shift);
+				printImmediateValue();
+			} else {
+				shift -= REGISTER_CODE_SIZE;
+				i->destRegister = getBits(inst, REGISTER_CODE_MASK, shift);
+				printRegister(i->destRegister);
+			}
+
+			break;
+
+
+		case IM_LDR:
+		case IM_STR:
+
+		case IM_CMP:
+		case IM_JMP:
+
+		case IM_MOV:
+		case IM_MVN:
+
+		case IM_PRR:
+			shift -= REGISTER_CODE_SIZE;
+			i->destRegister = getBits(inst, REGISTER_CODE_MASK, shift);
+			printRegister(i->destRegister);
+			break;
+
+		case IM_PRM:
+			shift -= IS_IMMEDIATE_SIZE;
+			i->isImmediate = getBits(inst, IS_IMMEDIATE_MASK, shift);
+
+			if (i->isImmediate){
+				shift -= IMMEDIATE_VALUE_SIZE;
+				i->immediateValue = getBits(inst, IMMEDIATE_VALUE_MASK, shift);
+				printImmediateValue();
+			} else {
+				shift -= REGISTER_CODE_SIZE;
+				i->destRegister = getBits(inst, REGISTER_CODE_MASK, shift);
+				printRegister(i->destRegister);
+			}
+			break;
+
+		case IM_NOP:
+		case IM_HLT:
+			break;
+
+		default:
+			printf("Unknowned inst");
+			break;
+	}
+
+	printf("\n");
+}
+
+
+void printMnemonic(uint8_t mnemonic){
+	if (mnemonic >= INSTRUCTION_COUNT){
+		printf("Unknown mnemonic");
+		return;
+	}
+
+	printf("%s", instRepr[mnemonic]);
+}
+
+void printRegister(uint8_t reg){
+	if (reg >= REGISTER_COUNT){
+		printf("Unknown registerCode");
+		return;
+	}
+
+	printf("r%s\n", registerRepr[reg]);
+}
+
+
+
+void printDecodedInst(EncodedInst inst){
+	DecodedInst *i = decodeInst(inst);
+
+
 }
