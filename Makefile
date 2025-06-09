@@ -6,12 +6,22 @@ OBJDIR   = obj
 BINDIR   = bin
 
 # Build modes
+CC       = gcc
+CPPFLAGS = $(INCDIR:%=-I%)
+CFLAGS   = -Wall -Wextra
+LDFLAGS  = -ll -lm  # (libs includes always at the end)
+
+LEX      = flex
+LFLAGS   = -Cf
+
+YACC     = bison
+YFLAGS   = -t --header=$(PARFILE:%.y=%.h) -Wall
 
 ifdef BUILD
-CFLAGS   +=-O2
+CFLAGS   += -O2
 else
-CPPFLAGS +=-g
-CFLAGS   +=-O0
+CPPFLAGS += -g
+CFLAGS   += -O0
 endif
 
 ifdef TEST
@@ -21,51 +31,39 @@ PRG      = $(SRCDIR)/micropiler.c
 endif
 
 # Files
-
 LEXFILE  = $(wildcard $(PARDIR)/*.l)
 PARFILE  = $(wildcard $(PARDIR)/*.y)
 
 LEXBUILD = $(LEXFILE:%.l=%.c)
 PARBUILD = $(PARFILE:%.y=%.c)
 
-SRC      = $(LEXBUILD) $(PARBUILD) $(wildcard $(SRCDIR)/*/*.c) $(PRG)
+SRC      = $(wildcard $(SRCDIR)/*/*.c) $(PRG)
 INC      = $(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/*/*.h)
-OBJ      = $(SRC:%.c=%.o) 
+OBJ      = $(SRC:%.c=%.o) $(PARFILE:%.y=%.o) $(LEXFILE:%.l=%.o)
 EXEC     = $(BINDIR)/$(notdir $(PRG:%.c=%))
 
-
 # Compile
-
-CC       = gcc
-CPPFLAGS = $(INCDIR:%=-I%)
-CFLAGS   = -Wall
-LDFLAGS  = -ll -lm  # (libs includes always at the end)
-
-LEX      = lex
-LFLAGS   = -Cf
-
-YACC     = bison
-YFLAGS   = -t --header=$(PARFILE:%.y=%.h) -Wall
-
-
-
-.PHONY: all main test clean
+.PHONY: all clean
 
 all: $(EXEC)
-
 
 %.c:%.l
 	$(LEX) $(LFLAGS) -o $@ $<
 
 %.c:%.y
-	$(YACC) $(YFLAGS) -o $@ $<
+	$(YACC) $(YFLAGS) --defines=$(patsubst %.c,%.h,$@) -o $@ $<
 
+analyzer:
+	@echo "#include \"parser.h\"" > $(PARDIR)/analyzer.h
+	@echo "#include \"lexer.h\"" >> $(PARDIR)/analyzer.h
 
-$(EXEC):$(OBJ)
+parser:$(LEXBUILD) $(PARBUILD)
+
+$(EXEC):parser $(OBJ)
 	$(CC) $(OBJ) -o $@ $(LDFLAGS)
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 	@echo \* Main program compiled successfully ! \*
 	@echo "\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-"
 
 clean:
-	-rm $(BINDIR)/* $(SRCDIR)/*/*.o $(SRCDIR)/*.o $(LEXBUILD) $(PARBUILD)
+	-rm $(BINDIR)/* $(SRCDIR)/*/*.o $(SRCDIR)/*.o $(PARBUILD) $(PARFILE:%.y=.h) $(LEXBUILD)
