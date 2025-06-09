@@ -2,32 +2,33 @@
 #define _INSTRUCTION_H_
 #include <stdio.h>
 #include <stdlib.h>
-#include "../sponge_std/sponge_std.h"
-#include "../encoding/encoding.h"
+#include "sponge_std.h"
+#include "instruction_encoding.h"
 
-typedef u32 Inst;
+typedef uint64_t Inst;
+
+#define DEFAULT_INSTRUCTION NOP
+
 
 Inst newInst();
 
-Inst setInstructionCode(Inst inst, InstructionCode code);
 
-Inst setConditionCode(Inst inst, ConditionCode code);
+Inst getPrrInstruction(RegisterCode registerCode);
 
-Inst setTypeCode(Inst inst, DataTypes code);
+Inst getCopyInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, uint64_t value);
 
-Inst setAsImmediate(Inst inst, bool code);
+Inst getJumpInstruction(uint32_t value);
 
-Inst setDestRegister(Inst inst, RegisterCode code);
+Inst getLoadStoreInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value);
 
-Inst setLargeIV(Inst inst, char *iv);
+Inst getCalculInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value);
 
-Inst setFirstRegister(Inst inst, RegisterCode code);
 
-Inst setSecondRegister(Inst inst, RegisterCode code);
+uint32_t getImmediateValue(char *value, int base);
 
-Inst setSmallIV(Inst inst, char *iv);
+uint8_t getRegisterCode(char *reg);
 
-bool isValidInst(Inst inst);
+uint8_t isValidInstruction(Inst inst);
 
 void printInstruction(Inst inst);
 

@@ -37,7 +37,7 @@ PostCondition : if success the is a stream size of newLength else is unchanged
 Return code :
 0 = SUCCESS; 1 = FAIL TO REALLOC
 */
-u32 reallocInstStream(u32 newLength, InstStream *is){
+uint64_t reallocInstStream(uint64_t newLength, InstStream *is){
 	if (is == NULL){
 		return REALLOC_FAILURE;
 	}
@@ -63,12 +63,12 @@ u8 appendInstruction(Inst inst, InstStream *is){
 		return APPEND_EMPTY_STREAM;
 	}
 	
-	if (!isValidInst(inst)){
+	if (!isValidInstruction(inst)){
 		return APPEND_INVALID_INSTRUCTION;
 	}
 
-	u32 toAlloc = 0;
-	u32 reallocCode = REALLOC_SUCCESS;
+	uint64_t toAlloc = 0;
+	uint64_t reallocCode = REALLOC_SUCCESS;
 	if (is->occupation + 1 >= is->length){
 		toAlloc = (is->length <= 0) ? 1 : 2 * is->length;
 		reallocCode = reallocInstStream(toAlloc, is);
@@ -84,6 +84,14 @@ u8 appendInstruction(Inst inst, InstStream *is){
 	return APPEND_SUCCESS;
 }
 
+Inst getInstFromInstStream(uint64_t index, InstStream *is){
+	if (!is || index >= is->occupation){
+		return IM_NOP;
+	}
+
+	return is->stream[index];
+}
+
 void printInstStream(InstStream *is){
 	if(is == NULL || is->stream == NULL){
 		printf("[]\n");
@@ -92,7 +100,7 @@ void printInstStream(InstStream *is){
 
 	printf("[\n");
 
-	for (int i = 0; i < is->length; i++){
+	for (unsigned int i = 0; i < is->length; i++){
 		printInstruction(is->stream[i]);
 	}
 	printf("]\n");

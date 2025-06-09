@@ -1,6 +1,8 @@
 #include "instruction.h"
+#include <errno.h>
 
-char *instructionRepr[INSTRUCTION_COUNT] = {"NOP", "MOV", "MVN", "AND", "ORR", "XOR", "ADD", "SUB", "MUL", "DIV", "REM", "LSL", "LSR", "PSH", "POP", "LDR", "LDREND", "STR", "CMP", "JMP", "PRR", "PRM", "END"};
+
+char *instructionRepr[INSTRUCTION_COUNT] = {"NOP", "MOV", "MVN", "AND", "ORR", "XOR", "ADD", "SUB", "MUL", "DIV", "REM", "LSL", "LSR", "LDR", "STR", "CMP", "JMP", "PRR", "PRM", "HLT"};
 
 char *registerRepr[REGISTER_COUNT] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "lr", "fp", "sp", "pc"};
 
@@ -8,155 +10,170 @@ char *datatypeRepr[DATATYPES_COUNT] = {"B", "H", "W", "D"};
 
 char *conditionRepr[CONDITION_COUNT] = {"AL", "NE", "CS", "CC", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "EQ"};
 
-#define MINUS_SIGN '-'
-
-i16 ivExtraction(char *value){
-	// i16 iv = 0;
-	// i8 sign = 1;
-	// u32 i = 1; // As the 1st caracter is always a # we can ignore it
-	// while (value[i] != END_STRING){
-	// 	if (isdigit(value[i])){
-	// 		iv *= 10;
-	// 		iv += (value[i] - '0');
-	// 	} else if (value[i] == MINUS_SIGN){
-	// 		sign = -1;
-	// 	}
-	// 	i++;
-	// }
-	
-	// return (sign * iv) % INT16_MAX;
-	return 0xFF;
-}
-
 Inst newInst(){
-	return NOP;
+	return IM_NOP;
 }
 
-Inst setInstructionCode(Inst inst, InstructionCode code){
-	return (inst & ~(u32)(instructionMask << instructionShift)) | (code << instructionShift);
+void setBits(uint64_t *dest, uint64_t data, uint64_t mask, uint64_t shift){
+	*dest = ((*dest & ~(mask << shift)) | (data << shift));
 }
 
-Inst setConditionCode(Inst inst, ConditionCode code){
-	return (inst & ~(conditionMask << conditionShift)) | (code << conditionShift);
+uint8_t isValideRegisterCode(RegisterCode registerCode){
+	return 0 <= registerCode && registerCode <= 15;
 }
 
-Inst setTypeCode(Inst inst, DataTypes code){
-	return (inst & ~(typeMask << typeShift)) | (code << typeShift);
+Inst getPrrInstruction(RegisterCode registerCode){
+	Inst inst = newInst();
+
+	uint64_t shift = (64 - INSTRUCTION_CODE_SIZE);
+	setBits(&inst, IM_PRR, INSTRUCTION_CODE_MASK, shift);
+
+	shift -= REGISTER_CODE_SIZE;
+	setBits(&inst, registerCode, REGISTER_CODE_MASK, shift);
+
+	return inst;
 }
 
-Inst setAsImmediate(Inst inst, bool code){
-	return (inst & ~(isImmediateMask << isImmediateShift)) | (code << isImmediateShift);
+Inst getCopyInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, uint64_t value){
+	Inst inst = newInst();
+	
+	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
+	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+
+	shift = shift - IS_IMMEDIATE_SIZE;
+	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
+
+	// TODO condition and datatype
+
+	shift = shift - REGISTER_CODE_SIZE;
+	setBits(&inst, dest, REGISTER_CODE_MASK, shift);
+
+	if (isImmediate){
+		shift = shift - IMMEDIATE_VALUE_SIZE;
+		setBits(&inst, value, IMMEDIATE_VALUE_MASK, shift);
+	} else {
+		shift = shift - REGISTER_CODE_SIZE;
+		setBits(&inst, value, REGISTER_CODE_MASK, shift);
+	}
+
+	return inst;
 }
 
-Inst setDestRegister(Inst inst, RegisterCode code){
-	return (inst & ~(destRegisterMask << destRegisterShift)) | (code << destRegisterShift);
+Inst getJumpInstruction(uint32_t value){
+	Inst inst = newInst();
+	
+	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
+	setBits(&inst, IM_JMP, INSTRUCTION_CODE_MASK, shift);
+
+	shift = shift - IS_IMMEDIATE_SIZE;
+	setBits(&inst, IMMEDIATE, IS_IMMEDIATE_MASK, shift);
+
+	// TODO condition and datatype
+
+	shift = shift - IMMEDIATE_VALUE_SIZE;
+	setBits(&inst, value, IMMEDIATE_VALUE_MASK, shift);
+
+	return inst;
 }
 
-Inst setLargeIV(Inst inst, char *iv){
-	i8 value = ivExtraction(iv);
-	return (inst & ~(simpleIVArgMask << simpleIVArgShift)) | (value << simpleIVArgShift);
+Inst getLoadStoreInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
+	Inst inst = newInst();
+	
+	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
+	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+
+	shift = shift  - IS_IMMEDIATE_SIZE;
+	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
+
+	// TODO condition and datatype
+
+	shift = shift - REGISTER_CODE_SIZE;
+	setBits(&inst, dest, REGISTER_CODE_MASK, shift);
+
+	shift = shift - REGISTER_CODE_SIZE;
+	setBits(&inst, src, REGISTER_CODE_MASK, shift);
+
+	if (isImmediate){
+		shift = shift - IMMEDIATE_VALUE_SIZE;
+		setBits(&inst, value, IMMEDIATE_VALUE_MASK, shift);
+	} else {
+		shift = shift - REGISTER_CODE_SIZE;
+		setBits(&inst, value, REGISTER_CODE_MASK, shift);
+	}
+
+	return inst;
 }
 
-Inst setFirstRegister(Inst inst, RegisterCode code){
-	return (inst & ~(firstRegArgMask << firstRegArgShift)) | (code << firstRegArgShift);
+Inst getCalculInstruction(InstructionCode ic, uint8_t isImmediate, RegisterCode dest, RegisterCode src, uint32_t value){
+	Inst inst = newInst();
+	
+	uint64_t shift = 64 - INSTRUCTION_CODE_SIZE;
+	setBits(&inst, ic, INSTRUCTION_CODE_MASK, shift);
+
+	shift = shift  - IS_IMMEDIATE_SIZE;
+	setBits(&inst, isImmediate, IS_IMMEDIATE_MASK, shift);
+
+	// TODO condition and datatype
+
+	shift = shift - REGISTER_CODE_SIZE;
+	setBits(&inst, dest, REGISTER_CODE_MASK, shift);
+
+	shift = shift - REGISTER_CODE_SIZE;
+	setBits(&inst, src, REGISTER_CODE_MASK, shift);
+
+	if (isImmediate){
+		shift = shift - IMMEDIATE_VALUE_SIZE;
+		setBits(&inst, value, IMMEDIATE_VALUE_MASK, shift);
+	} else {
+		shift = shift - REGISTER_CODE_SIZE;
+		setBits(&inst, value, REGISTER_CODE_MASK, shift);
+	}
+
+	return inst;
 }
 
-Inst setSecondRegister(Inst inst, RegisterCode code){
-	return (inst & ~(secondRegArgMask << secondRegArgShift)) | (code << secondRegArgShift);
+// -------- [  ] ---------
+
+uint32_t getImmediateValue(char *value, int base){
+	if (value == NULL){
+		return 0;
+	}
+
+	if (base != 10 && strlen(value) > 2){ // we are expecting a 2 character long prefix for every bases other then 10
+		value += 2;
+	}
+
+	uint32_t result = strtoul(value, NULL, base);
+
+	if (errno == EINVAL){
+		fatalError(INVALIDE_IMMEDIATE_VALUE);
+	}
+
+	if (errno == ERANGE){
+		fprintf(stderr, "Warning : %s is out of range, value truncated to %d", value, result);
+	}
+
+	return result;
 }
 
-Inst setSmallIV(Inst inst, char *iv){;
-	i8 value = ivExtraction(iv);
-	return (inst & ~(secondIVArgMask << secondIVArgShift)) | (value << secondIVArgShift);
+uint8_t getRegisterCode(char *reg){
+	if (reg == NULL){
+		fatalError(NULL_REGISTER);
+	}
+
+
+
+	uint8_t result = strtoul(reg, NULL, 10);
+	
+	fprintf(stderr, "reg : %d\n", result);
+
+	return result;
 }
 
-
-
-bool isValidInst(Inst inst){
-	InstructionCode instCode	= (inst & (instructionMask << instructionShift)) >> instructionShift;
-	ConditionCode condCode		= (inst & (conditionMask << conditionShift)) >> conditionShift;
-	DataTypes dataCode			= (inst & (typeMask << typeShift)) >> typeShift;
-	RegisterCode destRegister	= (inst & (destRegisterMask << destRegisterShift)) >> destRegisterShift;
-	RegisterCode fr				= (inst & (firstRegArgMask << firstRegArgShift)) >> firstRegArgShift;
-	RegisterCode sr				= (inst & (secondRegArgMask << secondRegArgShift)) >> secondRegArgShift;
-
-	return instCode < INSTRUCTION_COUNT && condCode < CONDITION_COUNT && dataCode < DATATYPES_COUNT && destRegister < REGISTER_COUNT && fr < REGISTER_COUNT && sr < REGISTER_COUNT;
+uint8_t isValidInstruction(Inst inst){
+	return 1;
 }
 
 void printInstruction(Inst inst){
-	if (!isValidInst(inst)){
-		printf("ERROR : Unkown instruction\n");
-		return;
-	}
-
-	// probably not optimized (>>)
-	InstructionCode instCode	= (inst & (instructionMask << instructionShift)) >> instructionShift;
-	ConditionCode condCode		= (inst & (conditionMask << conditionShift)) >> conditionShift;
-	DataTypes dataCode			= (inst & (typeMask << typeShift)) >> typeShift;
-	RegisterCode destRegister	= (inst & (destRegisterMask << destRegisterShift)) >> destRegisterShift;
-	
-	bool isImmediat = 0;
-	u16 largeIV = 0;
-	RegisterCode fr				= (inst & (firstRegArgMask << firstRegArgShift)) >> firstRegArgShift;
-	RegisterCode sr				= (inst & (secondRegArgMask << secondRegArgShift)) >> secondRegArgShift;
-	u8 smallIV = 0;
-
-	//printf("Inst : %d & cond : %d & data %d & dr : %d & im : %d & large iv : %d & fr : %d & sr : %d & smalliv : %d\n", instCode, condCode, dataCode, destRegister, isImmediat, largeIV, fr, sr, smallIV);
-
-	switch (instCode){
-	case ADD:
-	case AND:
-	case DIV:
-	case LSL:
-	case LSR:
-	case MUL:
-	case ORR:
-	case REM:
-	case SUB:
-	case XOR:
-		printf("%s%s%s %s %s ", instructionRepr[instCode], conditionRepr[condCode], datatypeRepr[dataCode], registerRepr[destRegister], registerRepr[fr]);
-		isImmediat = (inst & (isImmediateMask << isImmediateShift)) >> isImmediateShift;
-		
-		if (isImmediat){
-			smallIV = (inst & (secondIVArgMask << secondIVArgShift)) >> secondIVArgShift;
-			printf("#%d\n", smallIV);
-		} else {
-			printf("%s\n", registerRepr[sr]);
-		}
-		break;
-	
-	case CMP:
-	case MOV:
-	case MVN:
-	case STR:
-		printf("%s%s%s %s ", instructionRepr[instCode], conditionRepr[condCode], datatypeRepr[dataCode], registerRepr[destRegister]);
-		isImmediat = (inst & (isImmediateMask << isImmediateShift)) >> isImmediateShift;
-		
-		if (isImmediat){
-			largeIV = (inst & (simpleIVArgMask << simpleIVArgShift)) >> simpleIVArgShift;
-			printf("#%d\n", largeIV);
-		} else {
-			fr = 
-			printf("%s\n", registerRepr[fr]);
-		}
-		break;
-	
-	case PRM:
-	case PRR:
-	case PSH:
-	case POP:
-		printf("%s%s%s %s ", instructionRepr[instCode], conditionRepr[condCode], datatypeRepr[dataCode], registerRepr[destRegister]);
-		break;
-
-	case LDR:
-	case LDREND:
-			printf("%s%s%s %s ", instructionRepr[instCode], conditionRepr[condCode], datatypeRepr[dataCode], registerRepr[destRegister]);
-		break;	
-	case JMP:
-
-
-	default:
-		break;
-	}
-
+	printAsBinary(inst);
 }
