@@ -1,11 +1,16 @@
 #include "buckets.h"
 
 
-BucketCell *newBucketCell(char *key, int32_t value){
+BucketCell *newBucketCell(char *key, uint64_t value){
 	BucketCell *cell;
 	cell = (BucketCell *)allocate(sizeof(BucketCell), "Bucket cell creation");
 
-	cell->key = key;
+	if (key){
+		cell->key = strdup(key);
+	} else {
+		cell->key = NULL;
+	}
+
 	cell->value = value;
 	cell->next = NULL;
 	return cell;
@@ -21,7 +26,7 @@ Bucket *newBucket(){
 	return pl;
 }
 
-void appendBucket(char *key, int32_t value, Bucket *L){
+void appendBucket(char *key, uint64_t value, Bucket *L){
 	BucketCell *el = newBucketCell(key, value);
 	if (L->length == 0){ 
 		L->head = L->tail = el;
@@ -32,13 +37,13 @@ void appendBucket(char *key, int32_t value, Bucket *L){
 	(L->length)++;
 }
 
-int32_t popBucket(char *key, Bucket *l){
+uint64_t popBucket(char *key, Bucket *l){
 	if (l == NULL){
 		fatalError(11); // TODO :change error code
 	}
 
 	BucketCell *p = l->head;
-	int32_t value;
+	uint64_t value;
 	BucketCell *toFree = NULL;
 
 	if (p == NULL){
@@ -75,7 +80,7 @@ int32_t popBucket(char *key, Bucket *l){
 	return value;
 }
 
-int32_t getValueBucket(char *key, Bucket *l){
+uint64_t getValueBucket(char *key, Bucket *l){
 	if (l == NULL){
 		fatalError(11); // TODO :change error code
 	}
@@ -97,7 +102,7 @@ int32_t getValueBucket(char *key, Bucket *l){
 	return p->value;
 }
 
-void setValueBucket(char *key, uint32_t value, Bucket *l){
+void setValueBucket(char *key, uint64_t value, Bucket *l){
 	if (l == NULL){
 		fatalError(11); // TODO :change error code
 	}
@@ -120,9 +125,14 @@ void setValueBucket(char *key, uint32_t value, Bucket *l){
 
 void emptyBucket(Bucket *L){
 	BucketCell *el=L->head;
-	
+	BucketCell *next;
+
 	while (el){		
-		BucketCell *next=el->next;
+		next=el->next;
+		if (next->key){
+			free(next->key);
+		}
+
 		free(el);
 		el = next;
 	}
@@ -132,10 +142,10 @@ void emptyBucket(Bucket *L){
 
 void printBucket(Bucket *L){
 	BucketCell *p = L->head;
-	printf("Bucket : head : %p, tail : %p, length : %d\n", L->head, L->tail, L->length);
+	printf("Bucket : head : %p, tail : %p, length : %ld\n", L->head, L->tail, L->length);
 
 	while (p != NULL){
-		printf("%s : %d", p->key, p->value);
+		printf("%s : %ld", p->key, p->value);
 		p = p->next;
 		if (p != NULL){
 			printf(", ");
@@ -155,6 +165,9 @@ void freeBucket(Bucket *L){
 
 	while (p != NULL){
 		toFree = p;
+		if (toFree->key){
+			free(toFree->key);
+		}
 		p = p->next;
 		free(toFree);
 	}
