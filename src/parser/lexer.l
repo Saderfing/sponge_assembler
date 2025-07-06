@@ -72,7 +72,10 @@ Z	[zZ]
 
 
 {REGISTER_PREFIX}([0-9]|1[0-5])	{yylval.rawRegister = strdup(yytext); return MT_REGISTER;}
-({L}{R}|{F}{P}|{S}{P}|{P}{C})	{yylval.rawRegister = strdup(yytext); return MT_REGISTER;}
+{L}{R}							{yylval.rawRegister = strdup("r12"); return MT_REGISTER;}
+{F}{P}							{yylval.rawRegister = strdup("r13"); return MT_REGISTER;}
+{S}{P}							{yylval.rawRegister = strdup("r14"); return MT_REGISTER;}
+{P}{C}							{yylval.rawRegister = strdup("r15"); return MT_REGISTER;}
 
 {BIN_PREFIX}{BIN_NUM}+			{yylval.rawImmediateValue = strdup(yytext); return MT_BIN_VALUE;}
 {DEC_PREFIX}{DEC_NUM}+			{yylval.rawImmediateValue = strdup(yytext); return MT_DEC_VALUE;}

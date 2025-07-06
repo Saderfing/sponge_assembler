@@ -32,6 +32,6 @@ void pass();
 
 void printResult(char *testName, Test testResult);
 
-void printAsBinary(uint32_t integer);
+void printAsBinary(uint64_t integer);
 
 #endif

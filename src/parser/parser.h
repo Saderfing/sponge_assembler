@@ -39,7 +39,7 @@
 # define YY_YY_SRC_PARSER_PARSER_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
-# define YYDEBUG 0
+# define YYDEBUG 1
 #endif
 #if YYDEBUG
 extern int yydebug;
@@ -47,92 +47,60 @@ extern int yydebug;
 /* "%code requires" blocks.  */
 #line 1 "src/parser/parser.y"
 
-#include <stdio.h>
-#include "../sponge_std/sponge_std.h"
-#include "../encoding/encoding.h"
-#include "../hashmap/hashmap.h"
-#include "../instruction/instruction_stream.h"
 
-extern FILE *yyin;
-extern FILE *yyout;
+	#include <stdio.h>
+	#include "sponge_std.h"
+	#include "instruction_encoding.h"
+	#include "instruction_stream.h"
+	#include "instruction.h"
+	#include "hashmap.h"
+	#include "string.h"
 
-#line 60 "src/parser/parser.h"
+	extern int yylineno;
+	extern FILE *yyin;
+
+#line 63 "src/parser/parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
   enum yytokentype
   {
-    YYEMPTY = -2,
-    YYEOF = 0,                     /* "end of file"  */
-    YYerror = 256,                 /* error  */
-    YYUNDEF = 257,                 /* "invalid token"  */
-    DATA = 258,                    /* DATA  */
-    TEXT = 259,                    /* TEXT  */
-    START = 260,                   /* START  */
-    BYTE_TYPE = 261,               /* BYTE_TYPE  */
-    HWRD_TYPE = 262,               /* HWRD_TYPE  */
-    WORD_TYPE = 263,               /* WORD_TYPE  */
-    DOUB_TYPE = 264,               /* DOUB_TYPE  */
-    BYTE_DECLARATION = 265,        /* BYTE_DECLARATION  */
-    HWORD_DECLARATION = 266,       /* HWORD_DECLARATION  */
-    WORD_DECLARATION = 267,        /* WORD_DECLARATION  */
-    DOUBLE_DECLARATION = 268,      /* DOUBLE_DECLARATION  */
-    AL_COND = 269,                 /* AL_COND  */
-    NE_COND = 270,                 /* NE_COND  */
-    CS_COND = 271,                 /* CS_COND  */
-    CC_COND = 272,                 /* CC_COND  */
-    VS_COND = 273,                 /* VS_COND  */
-    VC_COND = 274,                 /* VC_COND  */
-    HI_COND = 275,                 /* HI_COND  */
-    LS_COND = 276,                 /* LS_COND  */
-    GE_COND = 277,                 /* GE_COND  */
-    LT_COND = 278,                 /* LT_COND  */
-    GT_COND = 279,                 /* GT_COND  */
-    LE_COND = 280,                 /* LE_COND  */
-    EQ_COND = 281,                 /* EQ_COND  */
-    INST_MOV = 282,                /* INST_MOV  */
-    INST_MVN = 283,                /* INST_MVN  */
-    INST_AND = 284,                /* INST_AND  */
-    INST_ORR = 285,                /* INST_ORR  */
-    INST_XOR = 286,                /* INST_XOR  */
-    INST_ADD = 287,                /* INST_ADD  */
-    INST_SUB = 288,                /* INST_SUB  */
-    INST_MUL = 289,                /* INST_MUL  */
-    INST_DIV = 290,                /* INST_DIV  */
-    INST_REM = 291,                /* INST_REM  */
-    INST_LSL = 292,                /* INST_LSL  */
-    INST_LSR = 293,                /* INST_LSR  */
-    INST_PSH = 294,                /* INST_PSH  */
-    INST_POP = 295,                /* INST_POP  */
-    INST_LDR = 296,                /* INST_LDR  */
-    INST_STR = 297,                /* INST_STR  */
-    INST_CMP = 298,                /* INST_CMP  */
-    INST_JMP = 299,                /* INST_JMP  */
-    INST_PRR = 300,                /* INST_PRR  */
-    INST_PRM = 301,                /* INST_PRM  */
-    IDENTIFIER = 302,              /* IDENTIFIER  */
-    DECLARATION = 303,             /* DECLARATION  */
-    IV = 304,                      /* IV  */
-    REG0 = 305,                    /* REG0  */
-    REG1 = 306,                    /* REG1  */
-    REG2 = 307,                    /* REG2  */
-    REG3 = 308,                    /* REG3  */
-    REG4 = 309,                    /* REG4  */
-    REG5 = 310,                    /* REG5  */
-    REG6 = 311,                    /* REG6  */
-    REG7 = 312,                    /* REG7  */
-    REG8 = 313,                    /* REG8  */
-    REG9 = 314,                    /* REG9  */
-    REG10 = 315,                   /* REG10  */
-    REG11 = 316,                   /* REG11  */
-    REG12 = 317,                   /* REG12  */
-    REG13 = 318,                   /* REG13  */
-    REG14 = 319,                   /* REG14  */
-    REG15 = 320,                   /* REG15  */
-    SEP = 321,                     /* SEP  */
-    EL = 322,                      /* EL  */
-    END_OF_FILE = 323              /* END_OF_FILE  */
+    MT_YYEMPTY = -2,
+    MT_YYEOF = 0,                  /* "end of file"  */
+    MT_YYerror = 256,              /* error  */
+    MT_YYUNDEF = 257,              /* "invalid token"  */
+    MT_SECTION_NAME = 258,         /* SECTION_NAME  */
+    MT_VARIABLE_DEF = 259,         /* VARIABLE_DEF  */
+    MT_PROG_SECTION = 260,         /* PROG_SECTION  */
+    MT_DATA_SECTION = 261,         /* DATA_SECTION  */
+    MT_BSS_SECTION = 262,          /* BSS_SECTION  */
+    MT_NEW_LINE = 263,             /* NEW_LINE  */
+    MT_INST_MOV = 264,             /* INST_MOV  */
+    MT_INST_MVN = 265,             /* INST_MVN  */
+    MT_INST_AND = 266,             /* INST_AND  */
+    MT_INST_ORR = 267,             /* INST_ORR  */
+    MT_INST_XOR = 268,             /* INST_XOR  */
+    MT_INST_ADD = 269,             /* INST_ADD  */
+    MT_INST_SUB = 270,             /* INST_SUB  */
+    MT_INST_MUL = 271,             /* INST_MUL  */
+    MT_INST_DIV = 272,             /* INST_DIV  */
+    MT_INST_REM = 273,             /* INST_REM  */
+    MT_INST_LSL = 274,             /* INST_LSL  */
+    MT_INST_LSR = 275,             /* INST_LSR  */
+    MT_INST_LDR = 276,             /* INST_LDR  */
+    MT_INST_STR = 277,             /* INST_STR  */
+    MT_INST_CMP = 278,             /* INST_CMP  */
+    MT_INST_JMP = 279,             /* INST_JMP  */
+    MT_INST_PRR = 280,             /* INST_PRR  */
+    MT_INST_PRM = 281,             /* INST_PRM  */
+    MT_IDENTIFIER = 282,           /* IDENTIFIER  */
+    MT_BIN_VALUE = 283,            /* BIN_VALUE  */
+    MT_DEC_VALUE = 284,            /* DEC_VALUE  */
+    MT_HEX_VALUE = 285,            /* HEX_VALUE  */
+    MT_REGISTER = 286,             /* REGISTER  */
+    MT_SEP = 287,                  /* SEP  */
+    MT_EL = 288                    /* EL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -141,12 +109,16 @@ extern FILE *yyout;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 25 "src/parser/parser.y"
+#line 39 "src/parser/parser.y"
 
 	char *identifier;
-	char *iv;
+	char *rawImmediateValue;
+	char *rawRegister;
+	uint32_t immediatValue;
+	EncodedInst instruction;
+	RegisterCode registerCode;
 
-#line 150 "src/parser/parser.h"
+#line 122 "src/parser/parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -8,8 +8,10 @@
 typedef struct instStream {
 	uint64_t length;
 	uint64_t occupation;
-	Inst *stream;
+	EncodedInst *stream;
 } InstStream;
+
+#define INSTRUCTION_STREAM_SIZE(is) is->occupation
 
 InstStream *newInstStream();
 
@@ -31,9 +33,9 @@ uint64_t reallocInstStream(uint64_t newLength, InstStream *is);
 #define APPEND_EMPTY_STREAM 1
 #define APPEND_INVALID_INSTRUCTION 2
 #define APPEND_REALLOC_FAILURE 3 // esta il gros shit
-u8 appendInstruction(Inst inst, InstStream *is);
+u8 appendInstruction(EncodedInst inst, InstStream *is);
 
-Inst getInstFromInstStream(uint64_t index, InstStream *is);
+EncodedInst getInstFromInstStream(uint64_t index, InstStream *is);
 
 void printInstStream(InstStream *is);
 

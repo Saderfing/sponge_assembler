@@ -5,10 +5,11 @@
 #include "../sponge_std/sponge_std.h"
 
 /*
-Extremely inpired by the ARM assembly langage
+Extremely inpired by the ARM instruction set
 */
 #define NOT_IMMEDIATE 0
 #define IMMEDIATE 1
+#define NOT_SET_IMMEDIATE 2
 
 typedef enum condition{
 	IC_AL,
@@ -24,6 +25,7 @@ typedef enum condition{
 	IC_GT,
 	IC_LE,
 	IC_EQ,
+	IC_INVALID_CONDITION,
 	CONDITION_COUNT
 }ConditionCode;
 
@@ -32,8 +34,9 @@ typedef enum types{
 	ID_HWRD, // Half-word
 	ID_WORD, // Word
 	ID_DOUB, // Double
+	ID_INVALID_DATATYPE,
 	DATATYPES_COUNT
-} DataTypes;
+} DataType;
 
 typedef enum regCode{
 	IR_R0,
@@ -52,6 +55,7 @@ typedef enum regCode{
 	IR_R13, IR_FP=13,
 	IR_R14, IR_SP=14,
 	IR_R15, IR_PC=15,
+	IR_INVALID_REGISTER,
 	REGISTER_COUNT
 } RegisterCode;
 
@@ -82,18 +86,19 @@ typedef enum instrName {
 	IM_PRM,
 	
 	IM_HLT,
-	INSTRUCTION_COUNT
+	IM_INVALID_MNEMONIC,
+	MNEMONIC_COUNT
 } Mnemonic;
 
 typedef enum instructionMask{
-	MNEUMONIC_MASK = 0x1F,
-	MNEUMONIC_SIZE = 5,
+	MNEMONIC_MASK = 0x1F,
+	MNEMONIC_SIZE = 5,
 
 	CONDITION_MASK		  = 0xF,
 	CONDITION_SIZE		  = 4,
 
-	TYPE_MASK			  = 0x3,
-	TYPE_SIZE			  = 2,
+	DATATYPE_MASK			  = 0x3,
+	DATATYPE_SIZE			  = 2,
 
 	IS_IMMEDIATE_MASK	  = 0x1,
 	IS_IMMEDIATE_SIZE	  = 1,

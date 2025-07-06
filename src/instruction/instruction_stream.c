@@ -26,7 +26,7 @@ void resetInstStream(InstStream *is){
 
 void freeInstrStream(InstStream *is){
 	resetInstStream(is);
-	if (is != NULL){
+	if (is){
 		free(is);
 	}
 }
@@ -38,7 +38,7 @@ Return code :
 0 = SUCCESS; 1 = FAIL TO REALLOC
 */
 uint64_t reallocInstStream(uint64_t newLength, InstStream *is){
-	if (is == NULL){
+	if (!is){
 		return REALLOC_FAILURE;
 	}
 
@@ -47,7 +47,7 @@ uint64_t reallocInstStream(uint64_t newLength, InstStream *is){
 		return REALLOC_SUCCESS;
  	}
 
-	Inst *newStream = (Inst *)realloc(is->stream, sizeof(Inst) * newLength);
+	EncodedInst *newStream = (EncodedInst *)realloc(is->stream, sizeof(EncodedInst) * newLength);
 	if (newStream == NULL){
 		return REALLOC_FAILURE;
 	}
@@ -58,12 +58,12 @@ uint64_t reallocInstStream(uint64_t newLength, InstStream *is){
 	return REALLOC_SUCCESS;
 }
 
-u8 appendInstruction(Inst inst, InstStream *is){
+u8 appendInstruction(EncodedInst inst, InstStream *is){
 	if (is == NULL){
 		return APPEND_EMPTY_STREAM;
 	}
 	
-	if (!isValidInstruction(inst)){
+	if (!isValidEncodedInst(inst)){
 		return APPEND_INVALID_INSTRUCTION;
 	}
 
@@ -84,7 +84,7 @@ u8 appendInstruction(Inst inst, InstStream *is){
 	return APPEND_SUCCESS;
 }
 
-Inst getInstFromInstStream(uint64_t index, InstStream *is){
+EncodedInst getInstFromInstStream(uint64_t index, InstStream *is){
 	if (!is || index >= is->occupation){
 		return IM_NOP;
 	}
@@ -101,7 +101,7 @@ void printInstStream(InstStream *is){
 	printf("[\n");
 
 	for (unsigned int i = 0; i < is->length; i++){
-		printInstruction(is->stream[i]);
+		printEncodedInst(is->stream[i]);
 	}
 	printf("]\n");
 }

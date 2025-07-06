@@ -41,7 +41,7 @@
 	char *rawImmediateValue;
 	char *rawRegister;
 	uint32_t immediatValue;
-	Inst instruction;
+	EncodedInst instruction;
 	RegisterCode registerCode;
 }
 
@@ -50,8 +50,15 @@
 %token <rawRegister> REGISTER
 
 %nterm <immediatValue> immediat_value
-%nterm <instruction> copy_operation calc_operation jump load_store
+%nterm <instruction> bin_operation calc_operation jump load_store
 %nterm <registerCode> reg
+
+%printer { fprintf(yyo, "%d", $$);} <registerCode>
+%printer { fprintf(yyo, "%d", $$);} <immediatValue>
+%printer { fprintf(yyo, "%lu", $$);} <instruction>
+%printer { fprintf(yyo, "%s", $$);} <rawRegister>
+%printer { fprintf(yyo, "%s", $$);} <rawImmediateValue>
+%printer { fprintf(yyo, "%s", $$);} <identifier>
 
 %token SEP EL
 
@@ -79,51 +86,53 @@ prog_section:
 	;
 
 declaration:
-	 IDENTIFIER ':' {appendHashMap($1, yylineno, symboleTable);}
+	 IDENTIFIER ':'						{appendHashMap($1, yylineno, symboleTable);}
 	;
 
 instruction:
-	 copy_operation		{appendInstruction($1, is);}
-	|calc_operation		{appendInstruction($1, is);}
-	|jump				{appendInstruction($1, is);}
-	|load_store			{appendInstruction($1, is); printInstStream(is);}
+	 bin_operation						{appendInstruction($1, is);}
+	|calc_operation						{appendInstruction($1, is);}
+	|jump								{appendInstruction($1, is);}
+	|load_store							{appendInstruction($1, is);}
 	;
 
-copy_operation:
-	 INST_MOV reg immediat_value {$$ = getCopyInstruction(IM_MOV, IMMEDIATE, $2, $3);}
-	|INST_MOV reg reg			 {$$ = getCopyInstruction(IM_MOV, IMMEDIATE, $2, $3);}
+bin_operation:
+	 INST_MOV reg immediat_value		{$$ = getCopyEncodedInst(IM_MOV, IMMEDIATE, $2, $3);}
+	|INST_MOV reg reg					{$$ = getCopyEncodedInst(IM_MOV, NOT_IMMEDIATE, $2, $3);}
 	;
 
 calc_operation:
-	 INST_ADD reg reg immediat_value {$$ = getCalculInstruction(IM_ADD, IMMEDIATE, $2, $3, $4);}
-	|INST_ADD reg reg reg			 {$$ = getCalculInstruction(IM_ADD, IMMEDIATE, $2, $3, $4);}
+	 INST_ADD reg reg immediat_value	{$$ = getCalculEncodedInst(IM_ADD, IMMEDIATE, $2, $3, $4);}
+	|INST_ADD reg reg reg				{$$ = getCalculEncodedInst(IM_ADD, NOT_IMMEDIATE, $2, $3, $4);}
 	;
 
 jump:
-	 INST_JMP IDENTIFIER	 {$$ = getJumpInstruction(getHashMap($2, symboleTable)); free($2);}
-	|INST_JMP immediat_value {$$ = getJumpInstruction($2);}
+	 INST_JMP IDENTIFIER				{$$ = getJumpEncodedInst(NOT_IMMEDIATE, getHashMap($2, symboleTable)); free($2);}
+	|INST_JMP immediat_value			{$$ = getJumpEncodedInst(IMMEDIATE, $2);}
 	;
 	
 load_store:
-	 INST_LDR reg reg reg {$$ = getLoadStoreInstruction(IM_LDR, NOT_IMMEDIATE, $2, $3, $4);}
-	|INST_STR reg reg reg {$$ = getLoadStoreInstruction(IM_STR, IMMEDIATE, $2, $3, $4);}
+	 INST_LDR reg reg reg				{$$ = getLoadStoreEncodedInst(IM_LDR, NOT_IMMEDIATE, $2, $3, $4);}
+	|INST_LDR reg reg immediat_value	{$$ = getLoadStoreEncodedInst(IM_LDR, IMMEDIATE, $2, $3, $4);}
+	|INST_STR reg reg reg 				{$$ = getLoadStoreEncodedInst(IM_STR, NOT_IMMEDIATE, $2, $3, $4);}
+	|INST_STR reg reg immediat_value	{$$ = getLoadStoreEncodedInst(IM_STR, IMMEDIATE, $2, $3, $4);}
 	;
 
 immediat_value:
-	 BIN_VALUE	{$$ = getImmediateValue($1, 2); free($1);  printf("%s : %d %x", $1, $$, $$);}
-	|DEC_VALUE	{$$ = getImmediateValue($1, 10); free($1); printf("%s : %d %x", $1, $$, $$);}
-	|HEX_VALUE	{$$ = getImmediateValue($1, 16); free($1); printf("%s : %d %x", $1, $$, $$);}
+	 BIN_VALUE							{$$ = getImmediateValue($1, 2); free($1);  printf("%s : %d %x", $1, $$, $$);}
+	|DEC_VALUE							{$$ = getImmediateValue($1, 10); free($1); printf("%s : %d %x", $1, $$, $$);}
+	|HEX_VALUE							{$$ = getImmediateValue($1, 16); free($1); printf("%s : %d %x", $1, $$, $$);}
 	;
 
 reg:
-	REGISTER		{$$ = getRegisterCode($1); free($1);}
+	REGISTER							{$$ = getRegisterCode($1); free($1);}
 	;
 
 %%
 
 int yyerror(InstStream *is, HashMap *symboleTable, const char *s){
 	resetInstStream(is);
-	printf("Line : %d | Instruction : %d\n", yylineno, programAddress);
+	printf("Line : %d | EncodedInst : %d\n", yylineno, programAddress);
 
 	return 0;
 }

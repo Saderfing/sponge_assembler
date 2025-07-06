@@ -2,11 +2,11 @@
 
 #define END_STRING '\0'
 
-char *F_RED = "\033[0;31m";
-char *F_GREEN = "\033[0;32m";
-char *F_YELLOW = "\033[0;33m";
-char *F_BLUE = "\033[0;34m";
-char *F_WHITE = "\033[0;39m";
+char *F_RED 	= "\033[0;31m";
+char *F_GREEN	= "\033[0;32m";
+char *F_YELLOW	= "\033[0;33m";
+char *F_BLUE	= "\033[0;34m";
+char *F_WHITE	= "\033[0;39m";
 
 bool isNullFile(FILE *f){
     return f == NULL;
@@ -24,7 +24,7 @@ FILE *openFile(char *fileName, char *mode){
 
 /*Read a line in the */
 int getLine(FILE *f, char destBuffer[], int destSize){
-    if (feof(f) || destBuffer <= 0){
+    if (feof(f) || destSize <= 0){
         return 1;
     }
     char c = fgetc(f);
@@ -55,4 +55,30 @@ void printRawChar(char c){
 	} else {
 		printf("%c", c);
 	}
+}
+
+void debug(char *msg){
+	if (msg){
+		#ifdef DEBUG
+		printf("%s\n", msg);
+		#endif
+	}
+
+}
+
+void warning(char *msg){
+	#ifdef DEBUG
+	if (msg && DEBUG >= 1){
+		printf("%s\n", msg);
+	}
+
+	#endif
+}
+
+void error(char *msg){
+	#ifdef DEBUG
+	if (msg && DEBUG >= 2){
+		printf("%s\n", msg);
+	}
+	#endif
 }
